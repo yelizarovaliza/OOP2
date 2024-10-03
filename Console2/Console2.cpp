@@ -1,20 +1,54 @@
-// Console2.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
+#include <vector>
 
-int main()
-{
-    std::cout << "Hello World!\n";
+using namespace std;
+
+//size of the board
+const int BOARD_WIDTH = 60;
+const int BOARD_HEIGHT = 30;
+// Struct to define the board
+struct Board {
+	vector<vector<char>> grid;
+	Board() : grid(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' ')) {}
+	void print() {
+		for (auto& row : grid) {
+			for (char c : row) {
+				cout  << "." << c;
+			}
+			cout << "\n";
+		}
+	}
+	/*
+	void drawTriangle(int x, int y, int height) {
+		if (height <= 0) return; // Ensure the triangle height is positive and sensible
+		for (int i = 0; i < height; ++i) {
+			int leftMost = x - i; // Calculate the starting position
+			int rightMost = x + i; // Calculate the ending position
+			int posY = y + i; // Calculate the vertical position
+			// Draw only the edges/border of the triangle
+			if (posY < BOARD_HEIGHT) {
+				if (leftMost >= 0 && leftMost < BOARD_WIDTH) {// Check bounds for left
+					most position
+						grid[posY][leftMost] = '*';
+				};
+				if (rightMost >= 0 && rightMost < BOARD_WIDTH && leftMost != rightMost)
+					// Check bounds for right most position
+					grid[posY][rightMost] = '*';
+			}
+		}
+		// Draw the base of the triangle separately
+		for (int j = 0; j < 2 * height - 1; ++j) {
+			int baseX = x - height + 1 + j;
+			int baseY = y + height - 1;
+			if (baseX >= 0 && baseX < BOARD_WIDTH && baseY < BOARD_HEIGHT) // Check
+				bounds for each position on the base
+				grid[baseY][baseX] = '*';
+		}
+	}*/
+};
+int main() {
+	Board board;
+	//board.drawTriangle(10, 1, 5);
+	board.print();
+	return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
