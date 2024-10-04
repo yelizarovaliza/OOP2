@@ -8,7 +8,6 @@ using namespace std;
 const int BOARD_WIDTH = 60;
 const int BOARD_HEIGHT = 40;
 
-// Struct to define the board
 struct Board {
     vector<vector<char>> grid;
     Board() : grid(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' ')) {}
@@ -22,26 +21,22 @@ struct Board {
         }
     }
 
-    // Method to add a character at a specific position if within bounds
     void setPixel(int x, int y, char c) {
         if (x >= 0 && x < BOARD_WIDTH && y >= 0 && y < BOARD_HEIGHT) {
             grid[y][x] = c;
         }
     }
 
-    // Method to clear the board
     void clear() {
         grid.assign(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' '));
     }
 };
 
-// Abstract base class Shape
 class Shape {
 public:
     virtual void draw(Board& board) = 0;
 };
 
-// Circle class derived from Shape
 class Circle : public Shape {
     int x, y, radius;
 
@@ -60,7 +55,6 @@ public:
     }
 };
 
-// Rectangle class derived from Shape
 class Rectangle : public Shape {
     int x, y, width, height;
 
@@ -78,14 +72,12 @@ public:
     }
 };
 
-// Triangle class derived from Shape
 class Triangle : public Shape {
     int x, y, length;
 
 public:
     Triangle(int left, int top, int l) : x(left), y(top), length(l) {}
 
-    // Draw a right triangle
     void drawRight(Board& board) {
         for (int i = 0; i < length; ++i) {
             for (int j = 0; j <= i; ++j) {
@@ -96,19 +88,15 @@ public:
         }
     }
 
-    // Draw only the frame of an equilateral triangle
     void drawEquilateralFrame(Board& board) {
-        // Draw left edge of the triangle
         for (int i = 0; i < length; ++i) {
             board.setPixel(x - i, y + i, '*');
         }
 
-        // Draw right edge of the triangle
         for (int i = 0; i < length; ++i) {
             board.setPixel(x + i, y + i, '*');
         }
 
-        // Draw the base of the triangle
         for (int j = x - (length - 1); j <= x + (length - 1); ++j) {
             board.setPixel(j, y + (length - 1), '*');
         }
@@ -128,14 +116,13 @@ public:
     }
 };
 
-// Command class to handle shapes
 class Commands {
-    vector<Shape*> shapes;  // Store shapes added to the board
+    vector<Shape*> shapes;
 
 public:
     ~Commands() {
         for (Shape* shape : shapes) {
-            delete shape;  // Free dynamically allocated memory
+            delete shape;
         }
     }
 
@@ -170,7 +157,6 @@ public:
         }
     }
 
-    // Draws all shapes on the board
     void drawAllShapes(Board& board) {
         board.clear();
         for (Shape* shape : shapes) {
@@ -178,7 +164,6 @@ public:
         }
     }
 
-    // Lists the available shape commands and their formats
     void listShapes() {
         cout << "Available shapes and parameters:\n";
         cout << "1. Circle: add circle <centerX> <centerY> <radius>\n";
@@ -205,6 +190,10 @@ int main() {
         }
         else if (command == "shapes") {
             c.listShapes();
+        }
+        else if (command == "clear") {
+            board.clear();
+            board.print();
         }
         else {
             c.addShape(command, board);
