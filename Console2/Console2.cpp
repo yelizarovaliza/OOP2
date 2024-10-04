@@ -79,7 +79,7 @@ class Triangle : public Shape {
 public:
     Triangle(int left, int top, int l) : x(left), y(top), length(l) {}
 
-    void drawRight(Board& board) override {
+    void drawRight(Board& board) {
         for (int i = 0; i < length; ++i) {
             for (int j = 0; j <= i; ++j) {
                 if (i == length - 1 || j == 0 || j == i) {
@@ -88,16 +88,34 @@ public:
             }
         }
     }
-    void drawTriangle(Board& board) override {
+    void drawEquilateral(Board& board) {
         for (int i = 0; i < length; ++i) {
-            for 
+            board.setPixel(x - i, y + i, '*');
         }
+        for (int i = 0; i < length; ++i) {
+            board.setPixel(x + i, y + i, '*');
+        }
+        for (int j = x - (length - 1); j <= x + (length - 1); ++j) {
+            board.setPixel(j, y + (length - 1), '*');
+        }
+    }
+    void draw(Board& board, const string& type) {
+        if (type == "right") {
+            drawRight(board);
+        }
+        else if (type == "equal") {
+            drawEquilateral(board);
+        }
+    }
+    void draw(Board& board) override {
+        drawEquilateral(board);
     }
 };
 class Commands {
+public:
     void addShape(const string& command, Board& board) {
         istringstream stream(command);
-        string action, shapeType;
+        string action, shapeType, triangleType;
         stream >> action >> shapeType;
 
         if (action == "add") {
@@ -113,17 +131,12 @@ class Commands {
                 Rectangle rectangle(x, y, width, height);
                 rectangle.draw(board);
             }
-            else if (shapeType == "right triangle") {
+            else if (shapeType == "triangle") {
+                stream >> triangleType;
                 int x, y, length;
                 stream >> x >> y >> length;
-                RightTriangle triangle(x, y, length);
-                triangle.draw(board);
-            }
-            else if (shapeType == "triangle") {
-                int x, y, length;
-                stream >> x >> length;
                 Triangle triangle(x, y, length);
-                triangle.draw(board);
+                triangle.draw(board, triangleType);
             }
         }
     }
@@ -132,19 +145,17 @@ class Commands {
 
 int main() {
     Board board;
+    Commands c;
     string command;
 
-    
-
-    // Continuously read user input
     while (true) {
         cout << "Enter a command: ";
         getline(cin, command);
         if (command == "exit") {
             break;
         }
-        addShape(command, board);
-        board.print();  // Show the updated board after each command
+        c.addShape(command, board);
+        board.print();
         cout << "\n";
     }
 
