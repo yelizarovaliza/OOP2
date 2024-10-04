@@ -73,19 +73,24 @@ public:
 };
 
 // RightTriangle class derived from Shape
-class RightTriangle : public Shape {
+class Triangle : public Shape {
     int x, y, length;
 
 public:
-    RightTriangle(int left, int top, int l) : x(left), y(top), length(l) {}
+    Triangle(int left, int top, int l) : x(left), y(top), length(l) {}
 
-    void draw(Board& board) override {
+    void drawRight(Board& board) override {
         for (int i = 0; i < length; ++i) {
             for (int j = 0; j <= i; ++j) {
                 if (i == length - 1 || j == 0 || j == i) {
                     board.setPixel(x + j, y + i, '*');
                 }
             }
+        }
+    }
+    void drawTriangle(Board& board) override {
+        for (int i = 0; i < length; ++i) {
+            for 
         }
     }
 };
@@ -108,10 +113,16 @@ class Commands {
                 Rectangle rectangle(x, y, width, height);
                 rectangle.draw(board);
             }
-            else if (shapeType == "triangle") {
+            else if (shapeType == "right triangle") {
                 int x, y, length;
                 stream >> x >> y >> length;
                 RightTriangle triangle(x, y, length);
+                triangle.draw(board);
+            }
+            else if (shapeType == "triangle") {
+                int x, y, length;
+                stream >> x >> length;
+                Triangle triangle(x, y, length);
                 triangle.draw(board);
             }
         }
