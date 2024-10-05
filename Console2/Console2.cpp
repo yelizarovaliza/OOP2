@@ -88,7 +88,7 @@ public:
         }
     }
 
-    void drawEquilateralFrame(Board& board) {
+    void drawEquilateral(Board& board) {
         for (int i = 0; i < length; ++i) {
             board.setPixel(x - i, y + i, '*');
         }
@@ -107,12 +107,12 @@ public:
             drawRight(board);
         }
         else if (type == "equal") {
-            drawEquilateralFrame(board);
+            drawEquilateral(board);
         }
     }
 
     void draw(Board& board) override {
-        drawEquilateralFrame(board);
+        drawEquilateral(board);
     }
 };
 
@@ -148,14 +148,14 @@ public:
             }
             else if (shapeType == "triangle") {
                 stream >> triangleType;
-                int x, y, length;
-                stream >> x >> y >> length;
+                    int x, y, length;
+                    stream >> x >> y >> length;
                 Triangle* triangle = new Triangle(x, y, length);
-                shapes.push_back(triangle);
-                triangle->draw(board, triangleType);
+                    shapes.push_back(triangle);
+                    triangle->draw(board, triangleType);
+                }
             }
         }
-    }
 
     void drawAllShapes(Board& board) {
         board.clear();
