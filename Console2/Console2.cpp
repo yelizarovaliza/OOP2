@@ -3,6 +3,9 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <fstream>
+#include <cmath>
+#include <set>
 
 using namespace std;
 
@@ -36,7 +39,9 @@ struct Board {
 class Shape {
 public:
     virtual void draw(Board& board) = 0;
-    virtual string info() const = 0; // Method to return shape details
+    virtual string info() const = 0;
+    virtual string serialize() const = 0;
+    virtual bool isInsideBoard() const = 0;
 };
 
 class Circle : public Shape {
@@ -59,6 +64,14 @@ public:
     string info() const override {
         return "Circle (" + to_string(x) + ", " + to_string(y) + "), radius: " + to_string(radius);
     }
+
+    string serialize() const override {
+        return "circle " + to_string(x) + " " + to_string(y) + " " + to_string(radius);
+    }
+
+    bool isInsideBoard() const override {
+        return (x - radius >= 0 && x + radius < BOARD_WIDTH && y - radius >= 0 && y + radius < BOARD_HEIGHT);
+    }
 };
 
 class Rectangle : public Shape {
@@ -79,6 +92,14 @@ public:
 
     string info() const override {
         return "Rectangle (" + to_string(x) + ", " + to_string(y) + "), width: " + to_string(width) + ", height: " + to_string(height);
+    }
+
+    string serialize() const override {
+        return "rectangle " + to_string(x) + " " + to_string(y) + " " + to_string(width) + " " + to_string(height);
+    }
+
+    bool isInsideBoard() const override {
+        return (x >= 0 && x + width <= BOARD_WIDTH && y >= 0 && y + height <= BOARD_HEIGHT);
     }
 };
 
@@ -117,11 +138,21 @@ public:
     string info() const override {
         return "Triangle (" + to_string(x) + ", " + to_string(y) + "), length: " + to_string(length) + ", type: " + type;
     }
+
+    string serialize() const override {
+        return "triangle " + type + " " + to_string(x) + " " + to_string(y) + " " + to_string(length);
+    }
+
+    bool isInsideBoard() const override {
+        return (type == "right" && x >= 0 && x + length <= BOARD_WIDTH && y >= 0 && y + length <= BOARD_HEIGHT) ||
+            (type == "equal" && x - (length - 1) >= 0 && x + (length - 1) < BOARD_WIDTH && y >= 0 && y + length <= BOARD_HEIGHT);
+    }
 };
 
 class Commands {
     map<int, Shape*> shapes;  // Map for storing shapes with unique IDs
-    int currentId = 0;        // ID counter for shapes
+    int currentId = 0;
+    set<string> placedShapes;  // Set for storing serialized shape details to ensure uniqueness
 
 public:
     ~Commands() {
@@ -130,34 +161,74 @@ public:
         }
     }
 
+    bool shapeExists(const Shape* shape) {
+        return placedShapes.find(shape->serialize()) != placedShapes.end();
+    }
+
     void addShape(const string& command, Board& board) {
         istringstream stream(command);
         string action, shapeType, triangleType;
         stream >> action >> shapeType;
 
-        if (action == "add") {
-            if (shapeType == "circle") {
-                int x, y, radius;
-                stream >> x >> y >> radius;
-                Circle* circle = new Circle(x, y, radius);
+        if (action != "add" || stream.fail()) {
+            cout << "Invalid command format. Use 'add <shape> <parameters>'.\n";
+            return;
+        }
+
+        if (shapeType == "circle") {
+            int x, y, radius;
+            if (!(stream >> x >> y >> radius)) {
+                cout << "Invalid parameters for circle. Use: add circle <centerX> <centerY> <radius>\n";
+                return;
+            }
+            Circle* circle = new Circle(x, y, radius);
+            if (circle->isInsideBoard() && !shapeExists(circle)) {
                 shapes[++currentId] = circle;
+                placedShapes.insert(circle->serialize());
                 circle->draw(board);
             }
-            else if (shapeType == "rectangle") {
-                int x, y, width, height;
-                stream >> x >> y >> width >> height;
-                Rectangle* rectangle = new Rectangle(x, y, width, height);
+            else {
+                cout << "Invalid circle placement. Either out of bounds or shape already exists.\n";
+                delete circle;
+            }
+        }
+        else if (shapeType == "rectangle") {
+            int x, y, width, height;
+            if (!(stream >> x >> y >> width >> height)) {
+                cout << "Invalid parameters for rectangle. Use: add rectangle <leftX> <topY> <width> <height>\n";
+                return;
+            }
+            Rectangle* rectangle = new Rectangle(x, y, width, height);
+            if (rectangle->isInsideBoard() && !shapeExists(rectangle)) {
                 shapes[++currentId] = rectangle;
+                placedShapes.insert(rectangle->serialize());
                 rectangle->draw(board);
             }
-            else if (shapeType == "triangle") {
-                stream >> triangleType;
-                int x, y, length;
-                stream >> x >> y >> length;
-                Triangle* triangle = new Triangle(x, y, length, triangleType);
+            else {
+                cout << "Invalid rectangle placement. Either out of bounds or shape already exists.\n";
+                delete rectangle;
+            }
+        }
+        else if (shapeType == "triangle") {
+            stream >> triangleType;
+            int x, y, length;
+            if (!(stream >> x >> y >> length) || (triangleType != "right" && triangleType != "equal")) {
+                cout << "Invalid parameters for triangle. Use: add triangle <type> <leftX> <topY> <length> (type: right/equal)\n";
+                return;
+            }
+            Triangle* triangle = new Triangle(x, y, length, triangleType);
+            if (triangle->isInsideBoard() && !shapeExists(triangle)) {
                 shapes[++currentId] = triangle;
+                placedShapes.insert(triangle->serialize());
                 triangle->draw(board);
             }
+            else {
+                cout << "Invalid triangle placement. Either out of bounds or shape already exists.\n";
+                delete triangle;
+            }
+        }
+        else {
+            cout << "Unknown shape type. Available shapes are circle, rectangle, triangle.\n";
         }
     }
 
@@ -175,16 +246,89 @@ public:
         }
         cout << "List of shapes:\n";
         for (auto& pair : shapes) {
-            cout << "ID: " << pair.first << " - " << pair.second->info() << "\n";
+            cout << pair.second->info() << "\n";
         }
     }
 
-    void shapesAvalible() {
-        cout << "Available shapes and parameters:\n";
-        cout << "1. Circle: add circle <centerX> <centerY> <radius>\n";
-        cout << "2. Rectangle: add rectangle <leftX> <topY> <width> <height>\n";
-        cout << "3. Triangle (Right): add triangle right <leftX> <topY> <length>\n";
-        cout << "4. Triangle (Equilateral): add triangle equal <centerX> <topY> <length>\n";
+    void saveBoard(const string& filename) {
+        ofstream file(filename);
+        if (!file.is_open()) {
+            cout << "Could not open file for saving.\n";
+            return;
+        }
+        for (auto& pair : shapes) {
+            file << pair.second->serialize() << "\n";
+        }
+        file.close();
+        cout << "Board saved successfully to " << filename << ".\n";
+    }
+
+    bool loadBoard(const string& filename, Board& board) {
+        ifstream file(filename);
+        if (!file.is_open()) {
+            cout << "Could not open file for loading.\n";
+            return false;
+        }
+
+        clearShapes(); // Clear current shapes before loading new ones
+        string line;
+        while (getline(file, line)) {
+            istringstream stream(line);
+            string shapeType;
+            stream >> shapeType;
+
+            if (shapeType == "circle") {
+                int x, y, radius;
+                stream >> x >> y >> radius;
+                Circle* circle = new Circle(x, y, radius);
+                if (circle->isInsideBoard() && !shapeExists(circle)) {
+                    shapes[++currentId] = circle;
+                }
+                else {
+                    cout << "Invalid circle in file. Skipped.\n";
+                    delete circle;
+                }
+            }
+            else if (shapeType == "rectangle") {
+                int x, y, width, height;
+                stream >> x >> y >> width >> height;
+                Rectangle* rectangle = new Rectangle(x, y, width, height);
+                if (rectangle->isInsideBoard() && !shapeExists(rectangle)) {
+                    shapes[++currentId] = rectangle;
+                }
+                else {
+                    cout << "Invalid rectangle in file. Skipped.\n";
+                    delete rectangle;
+                }
+            }
+            else if (shapeType == "triangle") {
+                string triangleType;
+                int x, y, length;
+                stream >> triangleType >> x >> y >> length;
+                Triangle* triangle = new Triangle(x, y, length, triangleType);
+                if (triangle->isInsideBoard() && !shapeExists(triangle)) {
+                    shapes[++currentId] = triangle;
+                }
+                else {
+                    cout << "Invalid triangle in file. Skipped.\n";
+                    delete triangle;
+                }
+            }
+            else {
+                cout << "Unknown shape type in file. Skipped line: " << line << "\n";
+            }
+        }
+        file.close();
+        return true;
+    }
+
+    void clearShapes() {
+        for (auto& pair : shapes) {
+            delete pair.second;
+        }
+        shapes.clear();
+        currentId = 0;
+        placedShapes.clear();
     }
 
     void undo(Board& board) {
@@ -195,6 +339,14 @@ public:
         else {
             cout << "No shapes to undo.\n";
         }
+    }
+
+    void shapesAvalible() {
+        cout << "Available shapes and parameters:\n";
+        cout << "1. Circle: add circle <centerX> <centerY> <radius>\n";
+        cout << "2. Rectangle: add rectangle <leftX> <topY> <width> <height>\n";
+        cout << "3. Triangle (Right): add triangle right <leftX> <topY> <length>\n";
+        cout << "4. Triangle (Equilateral): add triangle equal <centerX> <topY> <length>\n";
     }
 };
 
@@ -221,6 +373,21 @@ int main() {
         }
         else if (command == "undo") {
             c.undo(board);
+            board.print();
+        }
+        else if (command == "save") {
+            string filename;
+            cout << "Enter filename: ";
+            cin >> filename;
+            cin.ignore();
+            c.saveBoard(filename);
+        }
+        else if (command == "load") {
+            string filename;
+            cout << "Enter filename: ";
+            cin >> filename;
+            cin.ignore();
+            c.loadBoard(filename, board);
             board.print();
         }
         else if (command == "clear") {
