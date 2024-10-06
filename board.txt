@@ -1,0 +1,3 @@
+triangle right 30 20 10
+rectangle 30 20 10 15
+circle 20 20 10

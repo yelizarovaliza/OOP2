@@ -55,11 +55,14 @@ public:
             for (int j = -radius; j <= radius; ++j) {
                 int distanceSquared = i * i + j * j;
                 if (distanceSquared <= radius * radius && distanceSquared >= (radius - 1) * (radius - 1)) {
-                    board.setPixel(x + i, y + j, '*');
+                    if (x + i >= 0 && x + i < BOARD_WIDTH && y + j >= 0 && y + j < BOARD_HEIGHT) {
+                        board.setPixel(x + i, y + j, '*');
+                    }
                 }
             }
         }
     }
+
 
     string info() const override {
         return "Circle (" + to_string(x) + ", " + to_string(y) + "), radius: " + to_string(radius);
@@ -83,7 +86,8 @@ public:
     void draw(Board& board) override {
         for (int i = 0; i < height; ++i) {
             for (int j = 0; j < width; ++j) {
-                if (i == 0 || i == height - 1 || j == 0 || j == width - 1) {
+                if ((i == 0 || i == height - 1 || j == 0 || j == width - 1) &&
+                    (x + j >= 0 && x + j < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT)) {
                     board.setPixel(x + j, y + i, '*');
                 }
             }
@@ -115,25 +119,31 @@ public:
             for (int i = 0; i < length; ++i) {
                 for (int j = 0; j <= i; ++j) {
                     if (i == length - 1 || j == 0 || j == i) {
-                        board.setPixel(x + j, y + i, '*');
+                        if (x + j >= 0 && x + j < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
+                            board.setPixel(x + j, y + i, '*');
+                        }
                     }
                 }
             }
         }
         else if (type == "equal") {
             for (int i = 0; i < length; ++i) {
-                board.setPixel(x - i, y + i, '*');
-            }
-
-            for (int i = 0; i < length; ++i) {
-                board.setPixel(x + i, y + i, '*');
+                if (x - i >= 0 && x - i < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
+                    board.setPixel(x - i, y + i, '*');
+                }
+                if (x + i >= 0 && x + i < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
+                    board.setPixel(x + i, y + i, '*');
+                }
             }
 
             for (int j = x - (length - 1); j <= x + (length - 1); ++j) {
-                board.setPixel(j, y + (length - 1), '*');
+                if (j >= 0 && j < BOARD_WIDTH && y + (length - 1) >= 0 && y + (length - 1) < BOARD_HEIGHT) {
+                    board.setPixel(j, y + (length - 1), '*');
+                }
             }
         }
     }
+
 
     string info() const override {
         return "Triangle (" + to_string(x) + ", " + to_string(y) + "), length: " + to_string(length) + ", type: " + type;
@@ -270,7 +280,7 @@ public:
             return false;
         }
 
-        clearShapes(); // Clear current shapes before loading new ones
+        vector<Shape*> tempShapes;
         string line;
         while (getline(file, line)) {
             istringstream stream(line);
@@ -282,7 +292,7 @@ public:
                 stream >> x >> y >> radius;
                 Circle* circle = new Circle(x, y, radius);
                 if (circle->isInsideBoard() && !shapeExists(circle)) {
-                    shapes[++currentId] = circle;
+                    tempShapes.push_back(circle);
                 }
                 else {
                     cout << "Invalid circle in file. Skipped.\n";
@@ -294,7 +304,7 @@ public:
                 stream >> x >> y >> width >> height;
                 Rectangle* rectangle = new Rectangle(x, y, width, height);
                 if (rectangle->isInsideBoard() && !shapeExists(rectangle)) {
-                    shapes[++currentId] = rectangle;
+                    tempShapes.push_back(rectangle);
                 }
                 else {
                     cout << "Invalid rectangle in file. Skipped.\n";
@@ -307,7 +317,7 @@ public:
                 stream >> triangleType >> x >> y >> length;
                 Triangle* triangle = new Triangle(x, y, length, triangleType);
                 if (triangle->isInsideBoard() && !shapeExists(triangle)) {
-                    shapes[++currentId] = triangle;
+                    tempShapes.push_back(triangle);
                 }
                 else {
                     cout << "Invalid triangle in file. Skipped.\n";
@@ -319,6 +329,17 @@ public:
             }
         }
         file.close();
+
+        clearShapes();
+        board.clear();
+
+        for (auto& shape : tempShapes) {
+            shapes[++currentId] = shape;
+            placedShapes.insert(shape->serialize());
+        }
+
+        drawAllShapes(board);
+        cout << "Board loaded successfully from " << filename << ".\n";
         return true;
     }
 
