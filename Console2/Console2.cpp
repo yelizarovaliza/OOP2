@@ -73,7 +73,7 @@ public:
     }
 
     bool isInsideBoard() const override {
-        return (x - radius >= 0 && x + radius < BOARD_WIDTH && y - radius >= 0 && y + radius < BOARD_HEIGHT);
+        return (x >= 0 && x < BOARD_WIDTH && y >= 0 && y < BOARD_HEIGHT);
     }
 };
 
@@ -103,7 +103,7 @@ public:
     }
 
     bool isInsideBoard() const override {
-        return (x >= 0 && x + width <= BOARD_WIDTH && y >= 0 && y + height <= BOARD_HEIGHT);
+        return (x >= 0 && x <= BOARD_WIDTH && y >= 0 && y <= BOARD_HEIGHT);
     }
 };
 
@@ -154,8 +154,8 @@ public:
     }
 
     bool isInsideBoard() const override {
-        return (type == "right" && x >= 0 && x + length <= BOARD_WIDTH && y >= 0 && y + length <= BOARD_HEIGHT) ||
-            (type == "equal" && x - (length - 1) >= 0 && x + (length - 1) < BOARD_WIDTH && y >= 0 && y + length <= BOARD_HEIGHT);
+        return (type == "right" && x >= 0 && x <= BOARD_WIDTH && y >= 0 && y <= BOARD_HEIGHT) ||
+            (type == "equal" && x >= 0 && x < BOARD_WIDTH && y >= 0 && y <= BOARD_HEIGHT);
     }
 };
 
@@ -181,7 +181,7 @@ public:
         stream >> action >> shapeType;
 
         if (action != "add" || stream.fail()) {
-            cout << "Invalid command format. Use 'add <shape> <parameters>'.\n";
+            cout << "Invalid command format. Avalible commands are: add, shapes, draw, save, load, undo, clear, exit.\n";
             return;
         }
 
@@ -256,7 +256,7 @@ public:
         }
         cout << "List of shapes:\n";
         for (auto& pair : shapes) {
-            cout << pair.second->info() << "\n";
+            cout << "ID: " << pair.first << " - " << pair.second->info() << "\n";
         }
     }
 
@@ -291,7 +291,7 @@ public:
                 int x, y, radius;
                 stream >> x >> y >> radius;
                 Circle* circle = new Circle(x, y, radius);
-                if (circle->isInsideBoard() && !shapeExists(circle)) {
+                if (circle->isInsideBoard()) {
                     tempShapes.push_back(circle);
                 }
                 else {
@@ -303,7 +303,7 @@ public:
                 int x, y, width, height;
                 stream >> x >> y >> width >> height;
                 Rectangle* rectangle = new Rectangle(x, y, width, height);
-                if (rectangle->isInsideBoard() && !shapeExists(rectangle)) {
+                if (rectangle->isInsideBoard()) {
                     tempShapes.push_back(rectangle);
                 }
                 else {
@@ -316,7 +316,7 @@ public:
                 int x, y, length;
                 stream >> triangleType >> x >> y >> length;
                 Triangle* triangle = new Triangle(x, y, length, triangleType);
-                if (triangle->isInsideBoard() && !shapeExists(triangle)) {
+                if (triangle->isInsideBoard()) {
                     tempShapes.push_back(triangle);
                 }
                 else {
