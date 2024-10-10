@@ -4,7 +4,6 @@
 #include <string>
 #include <sstream>
 #include <fstream>
-#include <cmath>
 #include <set>
 
 using namespace std;
