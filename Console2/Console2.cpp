@@ -367,6 +367,9 @@ public:
         cout << "2. Rectangle: add rectangle <leftX> <topY> <width> <height>\n";
         cout << "3. Triangle (Right): add triangle right <leftX> <topY> <length>\n";
         cout << "4. Triangle (Equilateral): add triangle equal <centerX> <topY> <length>\n";
+        cout << "5. Circle fill: add circle fill <color> <centerX> <centerY> <redius>\n";
+        cout << "6. Triangle fill: add triangle shape right/equal fill <color> <leftX> <topY> <width> <height>\n";
+        cout << "7. Rectangle fill: add rectangle fill <color> <leftX> <topY> <width> <height>\n";
     }
 };
 
