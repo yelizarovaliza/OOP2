@@ -1,6 +1,0 @@
-circle 10 10 15
-rectangle 20 20 10 15
-triangle equal 10 20 15
-triangle right 30 30 10
-triangle equal 20 30 15
-rectangle 15 15 60 17

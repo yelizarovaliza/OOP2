@@ -371,6 +371,53 @@ public:
         cout << "6. Triangle fill: add triangle shape right/equal fill <color> <leftX> <topY> <width> <height>\n";
         cout << "7. Rectangle fill: add rectangle fill <color> <leftX> <topY> <width> <height>\n";
     }
+
+    void select(const string& input) {
+        istringstream stream(input);
+        string command, arg1, arg2;
+        stream >> command >> arg1 >> arg2;
+
+        if (arg2.empty()) { // Check if the second argument is empty (selection by ID)
+            int id;
+            if (stringstream(arg1) >> id) {
+                if (shapes.find(id) != shapes.end()) {
+                    cout << "Selected shape: " << shapes[id]->info() << "\n";
+                }
+                else {
+                    cout << "Shape with ID " << id << " not found.\n";
+                }
+            }
+            else {
+                cout << "Invalid shape ID.\n";
+            }
+        }
+        else {
+            int x, y;
+            if (stringstream(arg1) >> x && stringstream(arg2) >> y) {
+                bool found = false;
+                for (auto& pair : shapes) {
+                    Shape* shape = pair.second;
+
+                    // Simulate drawing the shape to a temporary board to check if it occupies (x, y)
+                    Board tempBoard;
+                    shape->draw(tempBoard);
+
+                    // Check if (x, y) is part of the shape
+                    if (tempBoard.grid[y][x] != ' ') { // Non-empty character means part of the shape
+                        cout << "Shape at (" << x << ", " << y << "): " << shape->info() << "\n";
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    cout << "Shape was not found at (" << x << ", " << y << ").\n";
+                }
+            }
+            else {
+                cout << "Invalid coordinates. Use: select <ID> or select <x> <y>\n";
+            }
+        }
+    }
 };
 
 int main() {
@@ -416,6 +463,9 @@ int main() {
         else if (command == "clear") {
             board.clear();
             board.print();
+        }
+        else if (command.find("select") == 0) {
+            c.select(command);
         }
         else {
             c.addShape(command, board);
