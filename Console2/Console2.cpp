@@ -259,7 +259,10 @@ public:
         }
     }
 
-    void saveBoard(const string& filename) {
+    void saveBoard(const string& input) {
+        istringstream stream(input);
+        string command, filename;
+        stream >> command >> filename;
         ofstream file(filename);
         if (!file.is_open()) {
             cout << "Could not open file for saving.\n";
@@ -272,7 +275,10 @@ public:
         cout << "Board saved successfully to " << filename << ".\n";
     }
 
-    bool loadBoard(const string& filename, Board& board) {
+    bool loadBoard(const string& input, Board& board) {
+        istringstream stream(input);
+        string command, filename;
+        stream >> command >> filename;
         ifstream file(filename);
         if (!file.is_open()) {
             cout << "Could not open file for loading.\n";
@@ -418,6 +424,8 @@ public:
             }
         }
     }
+
+
 };
 
 int main() {
@@ -445,19 +453,19 @@ int main() {
             c.undo(board);
             board.print();
         }
-        else if (command == "save") {
-            string filename;
+        else if (command.find("save") == 0) {
+            /*string filename;
             cout << "Enter filename: ";
             cin >> filename;
-            cin.ignore();
-            c.saveBoard(filename);
+            cin.ignore();*/
+            c.saveBoard(command);
         }
-        else if (command == "load") {
-            string filename;
+        else if (command.find("load") == 0) {
+            /*string filename;
             cout << "Enter filename: ";
             cin >> filename;
-            cin.ignore();
-            c.loadBoard(filename, board);
+            cin.ignore();*/
+            c.loadBoard(command, board);
             board.print();
         }
         else if (command == "clear") {
