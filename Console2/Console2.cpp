@@ -162,6 +162,7 @@ class Commands {
     map<int, Shape*> shapes;  // Map for storing shapes with unique IDs
     int currentId = 0;
     set<string> placedShapes;  // Set for storing serialized shape details to ensure uniqueness
+    int selectedId = -1;  // Track the last selected shape ID
 
 public:
     ~Commands() {
@@ -383,11 +384,13 @@ public:
         string command, arg1, arg2;
         stream >> command >> arg1 >> arg2;
 
-        if (arg2.empty()) { // Check if the second argument is empty (selection by ID)
+        if (arg2.empty()) {
             int id;
             if (stringstream(arg1) >> id) {
-                if (shapes.find(id) != shapes.end()) {
-                    cout << "Selected shape: " << shapes[id]->info() << "\n";
+                auto it = shapes.find(id);
+                if (it != shapes.end()) {
+                    cout << "Selected shape: " << it->second->info() << "\n";
+                    selectedId = id;
                 }
                 else {
                     cout << "Shape with ID " << id << " not found.\n";
@@ -400,23 +403,28 @@ public:
         else {
             int x, y;
             if (stringstream(arg1) >> x && stringstream(arg2) >> y) {
+                if (x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT) {
+                    cout << "Coordinates (" << x << ", " << y << ") are out of the board's boundaries.\n";
+                    return;
+                }
+
                 bool found = false;
                 for (auto& pair : shapes) {
                     Shape* shape = pair.second;
 
-                    // Simulate drawing the shape to a temporary board to check if it occupies (x, y)
                     Board tempBoard;
                     shape->draw(tempBoard);
 
-                    // Check if (x, y) is part of the shape
-                    if (tempBoard.grid[y][x] != ' ') { // Non-empty character means part of the shape
+                    if (tempBoard.grid[y][x] != ' ') {
                         cout << "Shape at (" << x << ", " << y << "): " << shape->info() << "\n";
+                        selectedId = pair.first;
                         found = true;
                         break;
                     }
                 }
+
                 if (!found) {
-                    cout << "Shape was not found at (" << x << ", " << y << ").\n";
+                    cout << "No shape found at (" << x << ", " << y << ").\n";
                 }
             }
             else {
@@ -426,6 +434,25 @@ public:
     }
 
 
+    void removeShape(Board& board) {
+        if (selectedId == -1) {
+            cout << "No shape is currently selected.\n";
+            return;
+        }
+
+        auto it = shapes.find(selectedId);
+        if (it != shapes.end()) {
+            placedShapes.erase(it->second->serialize());
+            delete it->second;
+            shapes.erase(it);
+            selectedId = -1;  // Reset the last selected ID
+            drawAllShapes(board);
+            cout << "Shape removed from the board.\n";
+        }
+        else {
+            cout << "Shape not found.\n";
+        }
+    }
 };
 
 int main() {
@@ -454,17 +481,9 @@ int main() {
             board.print();
         }
         else if (command.find("save") == 0) {
-            /*string filename;
-            cout << "Enter filename: ";
-            cin >> filename;
-            cin.ignore();*/
             c.saveBoard(command);
         }
         else if (command.find("load") == 0) {
-            /*string filename;
-            cout << "Enter filename: ";
-            cin >> filename;
-            cin.ignore();*/
             c.loadBoard(command, board);
             board.print();
         }
@@ -474,6 +493,9 @@ int main() {
         }
         else if (command.find("select") == 0) {
             c.select(command);
+        }
+        else if (command == "remove") {
+            c.removeShape(board);
         }
         else {
             c.addShape(command, board);
