@@ -36,11 +36,17 @@ struct Board {
 };
 
 class Shape {
+protected:
+    string color;
+
 public:
     virtual void draw(Board& board) = 0;
+    virtual void move(int newX, int newY) = 0;
     virtual string info() const = 0;
     virtual string serialize() const = 0;
     virtual bool isInsideBoard() const = 0;
+    virtual void setColor(const string& shapeColor) { color = shapeColor; }
+    virtual string getColor() const { return color; }
 };
 
 class Circle : public Shape {
@@ -50,18 +56,23 @@ public:
     Circle(int centerX, int centerY, int r) : x(centerX), y(centerY), radius(r) {}
 
     void draw(Board& board) override {
+        //char drawChar = toupper(color[0]);
         for (int i = -radius; i <= radius; ++i) {
             for (int j = -radius; j <= radius; ++j) {
                 int distanceSquared = i * i + j * j;
                 if (distanceSquared <= radius * radius && distanceSquared >= (radius - 1) * (radius - 1)) {
                     if (x + i >= 0 && x + i < BOARD_WIDTH && y + j >= 0 && y + j < BOARD_HEIGHT) {
-                        board.setPixel(x + i, y + j, '*');
+                        board.setPixel(x + i, y + j, '*' /*drawChar*/);
                     }
                 }
             }
         }
     }
 
+    void move(int newX, int newY) override {
+        x = newX;
+        y = newY;
+    }
 
     string info() const override {
         return "Circle (" + to_string(x) + ", " + to_string(y) + "), radius: " + to_string(radius);
@@ -83,14 +94,20 @@ public:
     Rectangle(int left, int top, int w, int h) : x(left), y(top), width(w), height(h) {}
 
     void draw(Board& board) override {
+        //char drawChar = toupper(color[0]);
         for (int i = 0; i < height; ++i) {
             for (int j = 0; j < width; ++j) {
                 if ((i == 0 || i == height - 1 || j == 0 || j == width - 1) &&
                     (x + j >= 0 && x + j < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT)) {
-                    board.setPixel(x + j, y + i, '*');
+                    board.setPixel(x + j, y + i, '*'/*drawChar*/);
                 }
             }
         }
+    }
+
+    void move(int newX, int newY) override {
+        x = newX;
+        y = newY;
     }
 
     string info() const override {
@@ -114,12 +131,13 @@ public:
     Triangle(int left, int top, int l, const string& triangleType) : x(left), y(top), length(l), type(triangleType) {}
 
     void draw(Board& board) override {
+        //char drawChar = toupper(color[0]);
         if (type == "right") {
             for (int i = 0; i < length; ++i) {
                 for (int j = 0; j <= i; ++j) {
                     if (i == length - 1 || j == 0 || j == i) {
                         if (x + j >= 0 && x + j < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
-                            board.setPixel(x + j, y + i, '*');
+                            board.setPixel(x + j, y + i, '*' /*drawChar*/);
                         }
                     }
                 }
@@ -128,21 +146,25 @@ public:
         else if (type == "equal") {
             for (int i = 0; i < length; ++i) {
                 if (x - i >= 0 && x - i < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
-                    board.setPixel(x - i, y + i, '*');
+                    board.setPixel(x - i, y + i, '*' /*drawChar*/);
                 }
                 if (x + i >= 0 && x + i < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
-                    board.setPixel(x + i, y + i, '*');
+                    board.setPixel(x + i, y + i, '*' /*drawChar*/);
                 }
             }
 
             for (int j = x - (length - 1); j <= x + (length - 1); ++j) {
                 if (j >= 0 && j < BOARD_WIDTH && y + (length - 1) >= 0 && y + (length - 1) < BOARD_HEIGHT) {
-                    board.setPixel(j, y + (length - 1), '*');
+                    board.setPixel(j, y + (length - 1), '*' /*drawChar*/);
                 }
             }
         }
     }
 
+    void move(int newX, int newY) override {
+        x = newX;
+        y = newY;
+    }
 
     string info() const override {
         return "Triangle (" + to_string(x) + ", " + to_string(y) + "), length: " + to_string(length) + ", type: " + type;
@@ -189,8 +211,8 @@ public:
             int x, y, radius;
             if (!(stream >> x >> y >> radius)) {
                 cout << "Invalid parameters for circle. Use: add circle <centerX> <centerY> <radius>\n";
-                return;
-            }
+            return;
+        }
             Circle* circle = new Circle(x, y, radius);
             if (circle->isInsideBoard() && !shapeExists(circle)) {
                 shapes[++currentId] = circle;
@@ -433,7 +455,6 @@ public:
         }
     }
 
-
     void removeShape(Board& board) {
         if (selectedId == -1) {
             cout << "No shape is currently selected.\n";
@@ -453,6 +474,29 @@ public:
             cout << "Shape not found.\n";
         }
     }
+
+    void moveShape(const string& input, Board& board) {
+        if (selectedId == -1) {
+            cout << "No shape is currently selected.\n";
+            return;
+        }
+
+        istringstream stream(input);
+        string command;
+        int newX, newY;
+        stream >> command >> newX >> newY;
+
+        auto it = shapes.find(selectedId);
+        if (it != shapes.end()) {
+            it->second->move(newX, newY);
+            drawAllShapes(board);
+            cout << "Shape with ID " << selectedId << " moved to (" << newX << ", " << newY << ").\n";
+        }
+        else {
+            cout << "Shape not found.\n";
+        }
+    }
+
 };
 
 int main() {
@@ -493,6 +537,10 @@ int main() {
         }
         else if (command.find("select") == 0) {
             c.select(command);
+        }
+        else if (command.find("move") == 0) {
+            c.moveShape(command, board);
+            board.print();
         }
         else if (command == "remove") {
             c.removeShape(board);
