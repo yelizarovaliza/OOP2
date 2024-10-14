@@ -47,8 +47,6 @@ public:
     virtual bool isInsideBoard() const = 0;
     virtual void setColor(const string& shapeColor) { color = shapeColor; }
     virtual string getColor() const { return color; }
-    virtual bool validateEditParameters(const vector<int>& newParams) const = 0;
-    virtual bool isValidEdit(const vector<int>& newParams, int boardWidth, int boardHeight) const = 0;
     virtual void applyEdit(const vector<int>& newParams) = 0;
 };
 
@@ -77,21 +75,13 @@ public:
         y = newY;
     }
 
-    bool validateEditParameters(const std::vector<int>& newParams) const override {
-        // Circle can only change the radius, so only one parameter should be provided
-        return newParams.size() == 1;
-    }
-
-    bool isValidEdit(const std::vector<int>& newParams, int boardWidth, int boardHeight) const override {
-        int newRadius = newParams[0];
-        // Validate the new radius and check if the circle will remain within board boundaries
-        return newRadius > 0 &&
-            (x + newRadius < boardWidth) &&
-            (y + newRadius < boardHeight);
-    }
-
-    void applyEdit(const std::vector<int>& newParams) override {
-        radius = newParams[0];
+    void applyEdit(const vector<int>& newParams) override {
+        if (newParams.size() == 1) {
+            radius = newParams[0];
+        }
+        else {
+            cout << "Invalid parameters for editing Circle. Expected 1 parameter (radius).\n";
+        }
     }
 
     string info() const override {
@@ -130,23 +120,14 @@ public:
         y = newY;
     }
 
-    bool validateEditParameters(const std::vector<int>& newParams) const override {
-        // Rectangle can change both width and height, so two parameters should be provided
-        return newParams.size() == 2;
-    }
-
-    bool isValidEdit(const std::vector<int>& newParams, int boardWidth, int boardHeight) const override {
-        int newWidth = newParams[0];
-        int newHeight = newParams[1];
-        // Validate the new dimensions and check if the rectangle will remain within board boundaries
-        return newWidth > 0 && newHeight > 0 &&
-            (x + newWidth <= boardWidth) &&
-            (y + newHeight <= boardHeight);
-    }
-
-    void applyEdit(const std::vector<int>& newParams) override {
-        width = newParams[0];
-        height = newParams[1];
+    void applyEdit(const vector<int>& newParams) override {
+        if (newParams.size() == 2) {
+            width = newParams[0];
+            height = newParams[1];
+        }
+        else {
+            cout << "Invalid parameters for editing Rectangle. Expected 2 parameters (width, height).\n";
+        }
     }
 
     string info() const override {
@@ -205,33 +186,14 @@ public:
         y = newY;
     }
 
-    bool validateEditParameters(const std::vector<int>& newParams) const override {
-        return newParams.size() == 1;
-    }
-
-    // Check if the new parameters are valid and within the board boundaries
-    bool isValidEdit(const std::vector<int>& newParams, int boardWidth, int boardHeight) const override {
-        int newLength = newParams[0];
-        if (newLength <= 0) {
-            return false; // Length should be positive
+    
+    void applyEdit(const vector<int>& newParams) override {
+        if (newParams.size() == 1) {
+            length = newParams[0];
         }
-
-        if (type == "right") {
-            // Check if the right triangle will still fit within board boundaries
-            return (x + newLength <= boardWidth) && (y + newLength <= boardHeight);
+        else {
+            cout << "Invalid parameters for editing Triangle. Expected 1 parameter (length).\n";
         }
-        else if (type == "equal") {
-            // Check if the equilateral triangle will still fit within board boundaries
-            return (x - newLength + 1 >= 0) && (x + newLength - 1 < boardWidth) &&
-                (y + newLength < boardHeight);
-        }
-
-        return false;
-    }
-
-    // Apply the new parameters to the Triangle
-    void applyEdit(const std::vector<int>& newParams) override {
-        length = newParams[0];
     }
 
     string info() const override {
@@ -565,31 +527,92 @@ public:
         }
     }
 
-    void editShape(const vector<int>& newParams) {
+    void editShape(const string& input, Board& board) {
+        if (selectedId == -1) {
+            cout << "No shape is currently selected.\n";
+            return;
+        }
+
+        istringstream stream(input);
+        string command;
+        int param1, param2;
+        vector<int> newParams;
+
+        stream >> command;
+        while (stream >> param1) {
+            newParams.push_back(param1);
+        }
+
+        if (newParams.empty()) {
+            cout << "Error: No parameters provided for editing.\n";
+            return;
+        }
+
         auto it = shapes.find(selectedId);
         if (it == shapes.end()) {
-            cout << "error: shape not found" << endl;
+            cout << "Shape not found.\n";
             return;
         }
 
         Shape* shape = it->second;
-        if (shape == nullptr) {
-            cout << "error: shape not found" << endl;
-            return;
-        }
 
-        if (!shape->validateEditParameters(newParams)) {
-            cout << "error: invalid argument count" << endl;
-            return;
+        if (Circle* circle = dynamic_cast<Circle*>(shape)) {
+            if (newParams.size() == 1) {
+                vector<int> newRadius = { newParams[0] };
+                Circle tempCircle = *circle;
+                tempCircle.applyEdit(newRadius);
+                if (tempCircle.isInsideBoard()) {
+                    circle->applyEdit(newRadius);
+                    drawAllShapes(board);
+                    cout << "Circle radius changed to " << newRadius[0] << ".\n";
+                }
+                else {
+                    cout << "Error: shape will go out of the board.\n";
+                }
+            }
+            else {
+                cout << "Error: invalid argument count for circle. Expected: edit <newRadius>\n";
+            }
         }
-
-        if (!shape->isValidEdit(newParams, BOARD_WIDTH, BOARD_HEIGHT)) {
-            cout << "error: shape will go out of the board or will be invalid" << endl;
-            return;
+        else if (Rectangle* rectangle = dynamic_cast<Rectangle*>(shape)) {
+            if (newParams.size() == 2) {
+                vector<int> newDimensions = { newParams[0], newParams[1] };
+                Rectangle tempRectangle = *rectangle;
+                tempRectangle.applyEdit(newDimensions);
+                if (tempRectangle.isInsideBoard()) {
+                    rectangle->applyEdit(newDimensions);
+                    drawAllShapes(board);
+                    cout << "Rectangle size changed to " << newDimensions[0] << "x" << newDimensions[1] << ".\n";
+                }
+                else {
+                    cout << "Error: shape will go out of the board.\n";
+                }
+            }
+            else {
+                cout << "Error: invalid argument count for rectangle. Expected: edit <newWidth> <newHeight>\n";
+            }
         }
-
-        shape->applyEdit(newParams);
-        cout << "size of " << shape->info() << " changed" << endl;
+        else if (Triangle* triangle = dynamic_cast<Triangle*>(shape)) {
+            if (newParams.size() == 1) {
+                vector<int> newLength = { newParams[0] };
+                Triangle tempTriangle = *triangle;
+                tempTriangle.applyEdit(newLength);
+                if (tempTriangle.isInsideBoard()) {
+                    triangle->applyEdit(newLength);
+                    drawAllShapes(board);
+                    cout << "Triangle length changed to " << newLength[0] << ".\n";
+                }
+                else {
+                    cout << "Error: shape will go out of the board.\n";
+                }
+            }
+            else {
+                cout << "Error: invalid argument count for triangle. Expected: edit <newLength>\n";
+            }
+        }
+        else {
+            cout << "Error: Unsupported shape type for editing.\n";
+        }
     }
 
 
@@ -641,12 +664,8 @@ int main() {
         else if (command == "remove") {
             c.removeShape(board);
         }
-        else if (command == "edit") {
-            istringstream stream(command);
-            int x, y;
-            stream >> x >> y;
-            vector<int> vector = { x,y };
-            c.editShape(vector);
+        else if (command.find("edit") == 0) {
+            c.editShape(command, board);
             board.print();
         }
         else {
