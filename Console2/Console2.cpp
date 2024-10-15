@@ -11,27 +11,48 @@ using namespace std;
 const int BOARD_WIDTH = 60;
 const int BOARD_HEIGHT = 40;
 
+string getColorCode(const string& color) {
+    if (color == "red") return "\033[31m";
+    else if (color == "green") return "\033[32m";
+    else if (color == "yellow") return "\033[33m";
+    else if (color == "blue") return "\033[34m";
+    else if (color == "purple") return "\033[35m";
+    else if (color == "white") return "\033[37m";
+    else return ""; // No color specified or unrecognized color
+}
+
+
 struct Board {
     vector<vector<char>> grid;
-    Board() : grid(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' ')) {}
+    vector<vector<string>> colorGrid; // Added colorGrid for storing colors
+
+    Board() : grid(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' ')),
+        colorGrid(BOARD_HEIGHT, vector<string>(BOARD_WIDTH, "")) {}
 
     void print() {
-        for (auto& row : grid) {
-            for (char c : row) {
-                cout << c;
+        for (int i = 0; i < BOARD_HEIGHT; ++i) {
+            for (int j = 0; j < BOARD_WIDTH; ++j) {
+                if (!colorGrid[i][j].empty()) {
+                    cout << colorGrid[i][j] << grid[i][j] << "\033[0m"; // Print color with reset
+                }
+                else {
+                    cout << grid[i][j];
+                }
             }
             cout << "\n";
         }
     }
 
-    void setPixel(int x, int y, char c) {
+    void setPixel(int x, int y, char c, const string& color = "") {
         if (x >= 0 && x < BOARD_WIDTH && y >= 0 && y < BOARD_HEIGHT) {
             grid[y][x] = c;
+            colorGrid[y][x] = color; // Update the colorGrid with the color code
         }
     }
 
     void clear() {
         grid.assign(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' '));
+        colorGrid.assign(BOARD_HEIGHT, vector<string>(BOARD_WIDTH, "")); // Clear colorGrid
     }
 };
 
@@ -41,10 +62,12 @@ protected:
 
 public:
     virtual void draw(Board& board) = 0;
+    virtual void drawShape(Board& board, string& color) = 0;
     virtual void move(int newX, int newY) = 0;
     virtual string info() const = 0;
     virtual string serialize() const = 0;
     virtual bool isInsideBoard() const = 0;
+    virtual bool isValidEdit(const vector<int>& newParams) const = 0;
     virtual void setColor(const string& shapeColor) { color = shapeColor; }
     virtual string getColor() const { return color; }
     virtual void applyEdit(const vector<int>& newParams) = 0;
@@ -57,22 +80,45 @@ public:
     Circle(int centerX, int centerY, int r) : x(centerX), y(centerY), radius(r) {}
 
     void draw(Board& board) override {
-        //char drawChar = toupper(color[0]);
         for (int i = -radius; i <= radius; ++i) {
             for (int j = -radius; j <= radius; ++j) {
                 int distanceSquared = i * i + j * j;
                 if (distanceSquared <= radius * radius && distanceSquared >= (radius - 1) * (radius - 1)) {
                     if (x + i >= 0 && x + i < BOARD_WIDTH && y + j >= 0 && y + j < BOARD_HEIGHT) {
-                        board.setPixel(x + i, y + j, '*' /*drawChar*/);
+                        board.setPixel(x + i, y + j, '*');
                     }
                 }
             }
         }
     }
 
+    void drawShape(Board& board, string& color) override {
+        string colorCode = getColorCode(color);
+
+        for (int i = -radius; i <= radius; ++i) {
+            for (int j = -radius; j <= radius; ++j) {
+                int distanceSquared = i * i + j * j;
+                if (distanceSquared <= radius * radius) { // Fill the circle
+                    if (x + i >= 0 && x + i < BOARD_WIDTH && y + j >= 0 && y + j < BOARD_HEIGHT) {
+                        board.setPixel(x + i, y + j, color[0], colorCode);
+                    }
+                }
+            }
+        }
+    }
+
+
+
     void move(int newX, int newY) override {
         x = newX;
         y = newY;
+    }
+
+    bool isValidEdit(const vector<int>& newParams) const override {
+        int newRadius = newParams[0];
+        return newRadius > 0 &&
+            (x + newRadius < BOARD_WIDTH) &&
+            (y + newRadius < BOARD_HEIGHT);
     }
 
     void applyEdit(const vector<int>& newParams) override {
@@ -104,16 +150,27 @@ public:
     Rectangle(int left, int top, int w, int h) : x(left), y(top), width(w), height(h) {}
 
     void draw(Board& board) override {
-        //char drawChar = toupper(color[0]);
         for (int i = 0; i < height; ++i) {
             for (int j = 0; j < width; ++j) {
                 if ((i == 0 || i == height - 1 || j == 0 || j == width - 1) &&
                     (x + j >= 0 && x + j < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT)) {
-                    board.setPixel(x + j, y + i, '*'/*drawChar*/);
+                    board.setPixel(x + j, y + i, '*');
                 }
             }
         }
     }
+
+    void drawShape(Board& board, string& color) override {
+        string colorCode = getColorCode(color);
+        for (int i = 0; i < height; ++i) {
+            for (int j = 0; j < width; ++j) {
+                if (x + j >= 0 && x + j < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
+                    board.setPixel(x + j, y + i, color[0], colorCode);
+                }
+            }
+        }
+    }
+
 
     void move(int newX, int newY) override {
         x = newX;
@@ -128,6 +185,14 @@ public:
         else {
             cout << "Invalid parameters for editing Rectangle. Expected 2 parameters (width, height).\n";
         }
+    }
+
+    bool isValidEdit(const vector<int>& newParams) const override {
+        int newWidth = newParams[0];
+        int newHeight = newParams[1];
+        return newWidth > 0 && newHeight > 0 &&
+            (x + newWidth <= BOARD_WIDTH) &&
+            (y + newHeight <= BOARD_HEIGHT);
     }
 
     string info() const override {
@@ -151,13 +216,12 @@ public:
     Triangle(int left, int top, int l, const string& triangleType) : x(left), y(top), length(l), type(triangleType) {}
 
     void draw(Board& board) override {
-        //char drawChar = toupper(color[0]);
         if (type == "right") {
             for (int i = 0; i < length; ++i) {
                 for (int j = 0; j <= i; ++j) {
                     if (i == length - 1 || j == 0 || j == i) {
                         if (x + j >= 0 && x + j < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
-                            board.setPixel(x + j, y + i, '*' /*drawChar*/);
+                            board.setPixel(x + j, y + i, '*');
                         }
                     }
                 }
@@ -166,16 +230,38 @@ public:
         else if (type == "equal") {
             for (int i = 0; i < length; ++i) {
                 if (x - i >= 0 && x - i < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
-                    board.setPixel(x - i, y + i, '*' /*drawChar*/);
+                    board.setPixel(x - i, y + i, '*');
                 }
                 if (x + i >= 0 && x + i < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
-                    board.setPixel(x + i, y + i, '*' /*drawChar*/);
+                    board.setPixel(x + i, y + i, '*');
                 }
             }
 
             for (int j = x - (length - 1); j <= x + (length - 1); ++j) {
                 if (j >= 0 && j < BOARD_WIDTH && y + (length - 1) >= 0 && y + (length - 1) < BOARD_HEIGHT) {
-                    board.setPixel(j, y + (length - 1), '*' /*drawChar*/);
+                    board.setPixel(j, y + (length - 1), '*');
+                }
+            }
+        }
+    }
+
+    void drawShape(Board& board, string& color) override {
+        string colorCode = getColorCode(color);
+        if (type == "right") {
+            for (int i = 0; i < length; ++i) {
+                for (int j = 0; j <= i; ++j) {
+                    if (x + j >= 0 && x + j < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
+                        board.setPixel(x + j, y + i, color[0], colorCode);
+                    }
+                }
+            }
+        }
+        else if (type == "equal") {
+            for (int i = 0; i < length; ++i) {
+                for (int j = -i; j <= i; ++j) {
+                    if (x + j >= 0 && x + j < BOARD_WIDTH && y + i >= 0 && y + i < BOARD_HEIGHT) {
+                        board.setPixel(x + j, y + i, color[0], colorCode);
+                    }
                 }
             }
         }
@@ -186,7 +272,24 @@ public:
         y = newY;
     }
 
-    
+    bool isValidEdit(const std::vector<int>& newParams) const override {
+        int newLength = newParams[0];
+        if (newLength <= 0) {
+            return false;
+        }
+
+        if (type == "right") {
+            return (x + newLength <= BOARD_WIDTH) && (y + newLength <= BOARD_HEIGHT);
+        }
+        else if (type == "equal") {
+            return (x - newLength + 1 >= 0) && (x + newLength - 1 < BOARD_WIDTH) &&
+                (y + newLength < BOARD_HEIGHT);
+        }
+
+        return false;
+    }
+
+
     void applyEdit(const vector<int>& newParams) override {
         if (newParams.size() == 1) {
             length = newParams[0];
@@ -236,62 +339,123 @@ public:
             cout << "Invalid command format. Avalible commands are: add, shapes, draw, save, load, undo, clear, exit.\n";
             return;
         }
+        string color, figure;
+        if (shapeType == "fill") {
+            stream >> color >> figure;
+            if (figure == "circle") {
+                int x, y, radius;
+                if (!(stream >> x >> y >> radius)) {
+                    cout << "Invalid parameters for circle. Use: add circle <centerX> <centerY> <radius> <color>\n";
+                    return;
+                }
+                Circle* circle = new Circle(x, y, radius);
+                circle->setColor(color);
+                if (circle->isInsideBoard() && !shapeExists(circle)) {
+                    shapes[++currentId] = circle;
+                    placedShapes.insert(circle->serialize());
+                    circle->drawShape(board, color);
+                }
+                else {
+                    cout << "Invalid circle placement. Either out of bounds or shape already exists.\n";
+                    delete circle;
+                }
+            }
+            else if (figure == "rectangle") {
+                int x, y, width, height;
+                if (!(stream >> x >> y >> width >> height)) {
+                    cout << "Invalid parameters for rectangle. Use: add rectangle <leftX> <topY> <width> <height>\n";
+                    return;
+                }
+                Rectangle* rectangle = new Rectangle(x, y, width, height);
+                rectangle->setColor(color);
+                if (rectangle->isInsideBoard() && !shapeExists(rectangle)) {
+                    shapes[++currentId] = rectangle;
+                    placedShapes.insert(rectangle->serialize());
+                    rectangle->drawShape(board, color);
+                }
+                else {
+                    cout << "Invalid rectangle placement. Either out of bounds or shape already exists.\n";
+                    delete rectangle;
+                }
+            }
+            else if (figure == "triangle") {
+                stream >> triangleType;
+                int x, y, length;
+                if (!(stream >> x >> y >> length) || (triangleType != "right" && triangleType != "equal")) {
+                    cout << "Invalid parameters for triangle. Use: add triangle <type> <leftX> <topY> <length> (type: right/equal)\n";
+                    return;
+                }
+                Triangle* triangle = new Triangle(x, y, length, triangleType);
+                triangle->setColor(color);
+                if (triangle->isInsideBoard() && !shapeExists(triangle)) {
+                    shapes[++currentId] = triangle;
+                    placedShapes.insert(triangle->serialize());
+                    triangle->drawShape(board, color);
+                }
+                else {
+                    cout << "Invalid triangle placement. Either out of bounds or shape already exists.\n";
+                    delete triangle;
+                }
+            }
 
-        if (shapeType == "circle") {
-            int x, y, radius;
-            if (!(stream >> x >> y >> radius)) {
-                cout << "Invalid parameters for circle. Use: add circle <centerX> <centerY> <radius>\n";
-            return;
-        }
-            Circle* circle = new Circle(x, y, radius);
-            if (circle->isInsideBoard() && !shapeExists(circle)) {
-                shapes[++currentId] = circle;
-                placedShapes.insert(circle->serialize());
-                circle->draw(board);
-            }
-            else {
-                cout << "Invalid circle placement. Either out of bounds or shape already exists.\n";
-                delete circle;
-            }
-        }
-        else if (shapeType == "rectangle") {
-            int x, y, width, height;
-            if (!(stream >> x >> y >> width >> height)) {
-                cout << "Invalid parameters for rectangle. Use: add rectangle <leftX> <topY> <width> <height>\n";
-                return;
-            }
-            Rectangle* rectangle = new Rectangle(x, y, width, height);
-            if (rectangle->isInsideBoard() && !shapeExists(rectangle)) {
-                shapes[++currentId] = rectangle;
-                placedShapes.insert(rectangle->serialize());
-                rectangle->draw(board);
-            }
-            else {
-                cout << "Invalid rectangle placement. Either out of bounds or shape already exists.\n";
-                delete rectangle;
-            }
-        }
-        else if (shapeType == "triangle") {
-            stream >> triangleType;
-            int x, y, length;
-            if (!(stream >> x >> y >> length) || (triangleType != "right" && triangleType != "equal")) {
-                cout << "Invalid parameters for triangle. Use: add triangle <type> <leftX> <topY> <length> (type: right/equal)\n";
-                return;
-            }
-            Triangle* triangle = new Triangle(x, y, length, triangleType);
-            if (triangle->isInsideBoard() && !shapeExists(triangle)) {
-                shapes[++currentId] = triangle;
-                placedShapes.insert(triangle->serialize());
-                triangle->draw(board);
-            }
-            else {
-                cout << "Invalid triangle placement. Either out of bounds or shape already exists.\n";
-                delete triangle;
-            }
         }
         else {
-            cout << "Unknown shape type. Available shapes are circle, rectangle, triangle.\n";
-        }
+            if (shapeType == "circle") {
+                int x, y, radius;
+                if (!(stream >> x >> y >> radius)) {
+                    cout << "Invalid parameters for circle. Use: add circle <centerX> <centerY> <radius>\n";
+                    return;
+                }
+                Circle* circle = new Circle(x, y, radius);
+                if (circle->isInsideBoard() && !shapeExists(circle)) {
+                    shapes[++currentId] = circle;
+                    placedShapes.insert(circle->serialize());
+                    circle->draw(board);
+                }
+                else {
+                    cout << "Invalid circle placement. Either out of bounds or shape already exists.\n";
+                    delete circle;
+                }
+            }
+            else if (shapeType == "rectangle") {
+                int x, y, width, height;
+                if (!(stream >> x >> y >> width >> height)) {
+                    cout << "Invalid parameters for rectangle. Use: add rectangle <leftX> <topY> <width> <height>\n";
+                    return;
+                }
+                Rectangle* rectangle = new Rectangle(x, y, width, height);
+                if (rectangle->isInsideBoard() && !shapeExists(rectangle)) {
+                    shapes[++currentId] = rectangle;
+                    placedShapes.insert(rectangle->serialize());
+                    rectangle->draw(board);
+                }
+                else {
+                    cout << "Invalid rectangle placement. Either out of bounds or shape already exists.\n";
+                    delete rectangle;
+                }
+            }
+            else if (shapeType == "triangle") {
+                stream >> triangleType;
+                int x, y, length;
+                if (!(stream >> x >> y >> length) || (triangleType != "right" && triangleType != "equal")) {
+                    cout << "Invalid parameters for triangle. Use: add triangle <type> <leftX> <topY> <length> (type: right/equal)\n";
+                    return;
+                }
+                Triangle* triangle = new Triangle(x, y, length, triangleType);
+                if (triangle->isInsideBoard() && !shapeExists(triangle)) {
+                    shapes[++currentId] = triangle;
+                    placedShapes.insert(triangle->serialize());
+                    triangle->draw(board);
+                }
+                else {
+                    cout << "Invalid triangle placement. Either out of bounds or shape already exists.\n";
+                    delete triangle;
+                }
+            }
+            else {
+                cout << "Unknown shape type. Available shapes are circle, rectangle, triangle.\n";
+            }
+        }   
     }
 
     void drawAllShapes(Board& board) {
@@ -614,7 +778,8 @@ public:
             cout << "Error: Unsupported shape type for editing.\n";
         }
     }
-
+    
+    //void paint()
 
 };
 
