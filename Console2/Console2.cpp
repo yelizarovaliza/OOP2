@@ -61,6 +61,7 @@ protected:
     string color;
 
 public:
+    Shape() : color("none") {} // Default color
     virtual void draw(Board& board) = 0;
     virtual void drawShape(Board& board, string& color) = 0;
     virtual void move(int newX, int newY) = 0;
