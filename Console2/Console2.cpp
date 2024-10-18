@@ -73,7 +73,7 @@ public:
     virtual void applyEdit(const vector<int>& newParams) = 0;
     virtual void setColor(const string& shapeColor) { color = shapeColor; }
     virtual string getColor() const { return color; }
-    virtual void setFilled(bool filled) { isFilled = filled; }
+    virtual void setFilled(bool fill) { isFilled = fill; }
     virtual bool getFilled() const { return isFilled; }
 
 
@@ -526,16 +526,20 @@ public:
         vector<Shape*> tempShapes;
         string line;
         while (getline(file, line)) {
-            istringstream stream(line);
+            istringstream lineStream(line);
             string shapeType;
-            stream >> shapeType;
+            lineStream >> shapeType;
 
-            bool isFilled = false;
-			string color;
+            bool isFilled;
+            string color;
 
             if (shapeType == "circle") {
                 int x, y, radius;
-                stream >> x >> y >> radius >> color >> isFilled;
+                lineStream >> x >> y >> radius >> color;
+                string fillStatus;
+                lineStream >> fillStatus;
+                isFilled = (fillStatus == "fill");
+
                 Circle* circle = new Circle(x, y, radius);
 
                 if (circle->isInsideBoard()) {
@@ -550,7 +554,11 @@ public:
             }
             else if (shapeType == "rectangle") {
                 int x, y, width, height;
-                stream >> x >> y >> width >> height >> color >> isFilled;
+                lineStream >> x >> y >> width >> height >> color;
+                string fillStatus;
+                lineStream >> fillStatus;
+                isFilled = (fillStatus == "fill");
+
                 Rectangle* rectangle = new Rectangle(x, y, width, height);
 
                 if (rectangle->isInsideBoard()) {
@@ -566,7 +574,11 @@ public:
             else if (shapeType == "triangle") {
                 string triangleType;
                 int x, y, length;
-                stream >> triangleType >> x >> y >> length >> color >> isFilled;
+                lineStream >> triangleType >> x >> y >> length >> color;
+                string fillStatus;
+                lineStream >> fillStatus;
+                isFilled = (fillStatus == "fill");
+
                 Triangle* triangle = new Triangle(x, y, length, triangleType);
 
                 if (triangle->isInsideBoard()) {
@@ -589,10 +601,9 @@ public:
         for (auto& shape : tempShapes) {
             shapes[++currentId] = shape;
             placedShapes.insert(shape->serialize());
-			//shape->draw(board);
+			shape->draw(board);
         }
 
-        drawAllShapes(board);
         cout << "Board loaded successfully from " << filename << ".\n";
         return true;
     }
