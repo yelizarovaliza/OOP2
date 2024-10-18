@@ -1,2 +1,1 @@
-circle 10 10 5
-triangle right 10 10 5
+circle 15 25 10 red filled

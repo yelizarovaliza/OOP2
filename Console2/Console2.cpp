@@ -18,7 +18,7 @@ string getColorCode(const string& color) {
     else if (color == "blue") return "\033[34m";
     else if (color == "purple") return "\033[35m";
     else if (color == "white") return "\033[37m";
-    else return ""; // No color specified or unrecognized color
+    else return "";
 }
 
 
@@ -33,7 +33,7 @@ struct Board {
         for (int i = 0; i < BOARD_HEIGHT; ++i) {
             for (int j = 0; j < BOARD_WIDTH; ++j) {
                 if (!colorGrid[i][j].empty()) {
-                    cout << colorGrid[i][j] << grid[i][j] << "\033[0m"; // Print color with reset
+                    cout << colorGrid[i][j] << grid[i][j] << "\033[0m";
                 }
                 else {
                     cout << grid[i][j];
@@ -46,22 +46,23 @@ struct Board {
     void setPixel(int x, int y, char c, const string& color = "") {
         if (x >= 0 && x < BOARD_WIDTH && y >= 0 && y < BOARD_HEIGHT) {
             grid[y][x] = c;
-            colorGrid[y][x] = color; // Update the colorGrid with the color code
+            colorGrid[y][x] = color;
         }
     }
 
     void clear() {
         grid.assign(BOARD_HEIGHT, vector<char>(BOARD_WIDTH, ' '));
-        colorGrid.assign(BOARD_HEIGHT, vector<string>(BOARD_WIDTH, "")); // Clear colorGrid
+        colorGrid.assign(BOARD_HEIGHT, vector<string>(BOARD_WIDTH, ""));
     }
 };
 
 class Shape {
 protected:
     string color;
+    bool isFilled;
 
 public:
-    Shape() : color("none") {} // Default color
+    Shape() : color("none"), isFilled(false) {}
     virtual void draw(Board& board) = 0;
     virtual void drawShape(Board& board, string& color) = 0;
     virtual void move(int newX, int newY) = 0;
@@ -69,9 +70,14 @@ public:
     virtual string serialize() const = 0;
     virtual bool isInsideBoard() const = 0;
     virtual bool isValidEdit(const vector<int>& newParams) const = 0;
+    virtual void applyEdit(const vector<int>& newParams) = 0;
     virtual void setColor(const string& shapeColor) { color = shapeColor; }
     virtual string getColor() const { return color; }
-    virtual void applyEdit(const vector<int>& newParams) = 0;
+    virtual void setFilled(bool filled) { isFilled = filled; }
+    virtual bool getFilled() const { return isFilled; }
+
+
+    virtual ~Shape() {}
 };
 
 class Circle : public Shape {
@@ -99,14 +105,15 @@ public:
         for (int i = -radius; i <= radius; ++i) {
             for (int j = -radius; j <= radius; ++j) {
                 int distanceSquared = i * i + j * j;
-                if (distanceSquared <= radius * radius) { // Fill the circle
+                if (distanceSquared <= radius * radius) {
                     if (x + i >= 0 && x + i < BOARD_WIDTH && y + j >= 0 && y + j < BOARD_HEIGHT) {
                         board.setPixel(x + i, y + j, color[0], colorCode);
-                    }
                 }
             }
         }
     }
+    }
+    
 
 
 
@@ -130,13 +137,16 @@ public:
             cout << "Invalid parameters for editing Circle. Expected 1 parameter (radius).\n";
         }
     }
-
+	
     string info() const override {
-        return "Circle (" + to_string(x) + ", " + to_string(y) + "), radius: " + to_string(radius);
+        return "Circle: center(" + to_string(x) + ", " + to_string(y) +
+            "), radius " + to_string(radius) + ", color " + color +
+            ", " + (isFilled ? "filled" : "frame");
     }
 
     string serialize() const override {
-        return "circle " + to_string(x) + " " + to_string(y) + " " + to_string(radius);
+        return "circle " + to_string(x) + " " + to_string(y) + " " +
+            to_string(radius) + " " + color + " " + (isFilled ? "filled" : "frame");
     }
 
     bool isInsideBoard() const override {
@@ -340,8 +350,10 @@ public:
             cout << "Invalid command format. Avalible commands are: add, shapes, draw, save, load, undo, clear, exit.\n";
             return;
         }
+        bool isFill = false;
         string color, figure;
         if (shapeType == "fill") {
+			isFill = true;
             stream >> color >> figure;
             if (figure == "circle") {
                 int x, y, radius;
@@ -351,6 +363,7 @@ public:
                 }
                 Circle* circle = new Circle(x, y, radius);
                 circle->setColor(color);
+                circle->setFilled(isFill);
                 if (circle->isInsideBoard() && !shapeExists(circle)) {
                     shapes[++currentId] = circle;
                     placedShapes.insert(circle->serialize());
@@ -463,6 +476,13 @@ public:
         board.clear();
         for (auto& pair : shapes) {
             pair.second->draw(board);
+			if (pair.second->getFilled() == true) {
+				string color = pair.second->getColor();
+				pair.second->drawShape(board, color);
+            }
+            else {
+                pair.second->draw(board);
+            }
         }
     }
 
@@ -510,11 +530,17 @@ public:
             string shapeType;
             stream >> shapeType;
 
+            bool isFilled = false;
+			string color;
+
             if (shapeType == "circle") {
                 int x, y, radius;
-                stream >> x >> y >> radius;
+                stream >> x >> y >> radius >> color >> isFilled;
                 Circle* circle = new Circle(x, y, radius);
+
                 if (circle->isInsideBoard()) {
+                    circle->setFilled(isFilled);
+                    circle->setColor(color);
                     tempShapes.push_back(circle);
                 }
                 else {
@@ -524,9 +550,12 @@ public:
             }
             else if (shapeType == "rectangle") {
                 int x, y, width, height;
-                stream >> x >> y >> width >> height;
+                stream >> x >> y >> width >> height >> color >> isFilled;
                 Rectangle* rectangle = new Rectangle(x, y, width, height);
+
                 if (rectangle->isInsideBoard()) {
+                    rectangle->setFilled(isFilled);
+                    rectangle->setColor(color);
                     tempShapes.push_back(rectangle);
                 }
                 else {
@@ -537,9 +566,12 @@ public:
             else if (shapeType == "triangle") {
                 string triangleType;
                 int x, y, length;
-                stream >> triangleType >> x >> y >> length;
+                stream >> triangleType >> x >> y >> length >> color >> isFilled;
                 Triangle* triangle = new Triangle(x, y, length, triangleType);
+
                 if (triangle->isInsideBoard()) {
+                    triangle->setFilled(isFilled);
+                    triangle->setColor(color);
                     tempShapes.push_back(triangle);
                 }
                 else {
@@ -553,12 +585,11 @@ public:
         }
         file.close();
 
-        clearShapes();
-        board.clear();
 
         for (auto& shape : tempShapes) {
             shapes[++currentId] = shape;
             placedShapes.insert(shape->serialize());
+			//shape->draw(board);
         }
 
         drawAllShapes(board);
@@ -683,8 +714,12 @@ public:
 
         auto it = shapes.find(selectedId);
         if (it != shapes.end()) {
-            it->second->move(newX, newY);
+            Shape* shape = it->second;
+            shape->move(newX, newY);
             drawAllShapes(board);
+            string originalColor = shape->getColor();
+            bool wasFilled = shape->getFilled();
+
             cout << "Shape with ID " << selectedId << " moved to (" << newX << ", " << newY << ").\n";
         }
         else {
@@ -780,7 +815,26 @@ public:
         }
     }
     
-    //void paint()
+    void paint(const string& input) {
+        if (selectedId == -1) {
+            cout << "No shape is currently selected.\n";
+            return;
+        }
+
+        istringstream stream(input);
+        string command, color;
+        stream >> command >> color;
+
+        auto it = shapes.find(selectedId);
+        if (it != shapes.end()) {
+            it->second->setColor(color);
+            cout << "Shape with ID " << selectedId << " color changed to " << color << ".\n";
+        }
+        else {
+            cout << "Shape not found.\n";
+        }
+    }
+
 
 };
 
@@ -833,6 +887,9 @@ int main() {
         else if (command.find("edit") == 0) {
             c.editShape(command, board);
             board.print();
+        }
+        else if (command.find("paint") == 0) {
+			c.paint(command);
         }
         else {
             c.addShape(command, board);
