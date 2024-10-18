@@ -207,11 +207,13 @@ public:
     }
 
     string info() const override {
-        return "Rectangle (" + to_string(x) + ", " + to_string(y) + "), width: " + to_string(width) + ", height: " + to_string(height);
+        return "Rectangle (" + to_string(x) + ", " + to_string(y) + "), width: " + to_string(width) + ", height: " + to_string(height) 
+            + ", color " + color + ", " + (isFilled ? "filled" : "frame");
     }
 
     string serialize() const override {
-        return "rectangle " + to_string(x) + " " + to_string(y) + " " + to_string(width) + " " + to_string(height);
+        return "rectangle " + to_string(x) + " " + to_string(y) + " " + to_string(width) + " " + to_string(height) 
+             + color + ", " + (isFilled ? "filled" : "frame");
     }
 
     bool isInsideBoard() const override {
@@ -311,11 +313,13 @@ public:
     }
 
     string info() const override {
-        return "Triangle (" + to_string(x) + ", " + to_string(y) + "), length: " + to_string(length) + ", type: " + type;
+        return "Triangle (" + to_string(x) + ", " + to_string(y) + "), length: " + to_string(length) + ", type: " + type
+            + ", color " + color + ", " + (isFilled ? "filled" : "frame");
     }
 
     string serialize() const override {
-        return "triangle " + type + " " + to_string(x) + " " + to_string(y) + " " + to_string(length);
+        return "triangle " + type + " " + to_string(x) + " " + to_string(y) + " " + to_string(length) 
+            + color + ", " + (isFilled ? "filled" : "frame");
     }
 
     bool isInsideBoard() const override {
@@ -375,6 +379,7 @@ public:
                 }
             }
             else if (figure == "rectangle") {
+                isFill = true;
                 int x, y, width, height;
                 if (!(stream >> x >> y >> width >> height)) {
                     cout << "Invalid parameters for rectangle. Use: add rectangle <leftX> <topY> <width> <height>\n";
@@ -393,6 +398,7 @@ public:
                 }
             }
             else if (figure == "triangle") {
+                isFill = true;
                 stream >> triangleType;
                 int x, y, length;
                 if (!(stream >> x >> y >> length) || (triangleType != "right" && triangleType != "equal")) {
@@ -601,7 +607,13 @@ public:
         for (auto& shape : tempShapes) {
             shapes[++currentId] = shape;
             placedShapes.insert(shape->serialize());
-			shape->draw(board);
+			string color = shape->getColor();
+            if (shape->getFilled() == true) {
+                shape->drawShape(board, color);
+            }
+            else {
+                shape->draw(board);
+            }
         }
 
         cout << "Board loaded successfully from " << filename << ".\n";
@@ -826,7 +838,7 @@ public:
         }
     }
     
-    void paint(const string& input) {
+    void paint(const string& input, Board& board) {
         if (selectedId == -1) {
             cout << "No shape is currently selected.\n";
             return;
@@ -839,13 +851,16 @@ public:
         auto it = shapes.find(selectedId);
         if (it != shapes.end()) {
             it->second->setColor(color);
+
+            board.clear();
+            drawAllShapes(board);
+
             cout << "Shape with ID " << selectedId << " color changed to " << color << ".\n";
         }
         else {
             cout << "Shape not found.\n";
         }
     }
-
 
 };
 
@@ -900,7 +915,7 @@ int main() {
             board.print();
         }
         else if (command.find("paint") == 0) {
-			c.paint(command);
+			c.paint(command, board);
         }
         else {
             c.addShape(command, board);
