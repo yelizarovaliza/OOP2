@@ -10,6 +10,7 @@ using namespace std;
 
 const int BOARD_WIDTH = 60;
 const int BOARD_HEIGHT = 40;
+const int BOARDAREA = BOARD_HEIGHT * BOARD_WIDTH;
 
 string getColorCode(const string& color) {
     if (color == "red") return "\033[31m";
@@ -20,7 +21,6 @@ string getColorCode(const string& color) {
     else if (color == "white") return "\033[37m";
     else return "";
 }
-
 
 struct Board {
     vector<vector<char>> grid;
@@ -75,7 +75,11 @@ public:
     virtual string getColor() const { return color; }
     virtual void setFilled(bool fill) { isFilled = fill; }
     virtual bool getFilled() const { return isFilled; }
+    virtual double area() const = 0;
 
+    bool fitsOnBoard() const {
+        return area() <= BOARDAREA;
+    }
 
     virtual ~Shape() {}
 };
@@ -85,6 +89,10 @@ class Circle : public Shape {
 
 public:
     Circle(int centerX, int centerY, int r) : x(centerX), y(centerY), radius(r) {}
+
+    double area() const override {
+        return 3.14 * radius * radius;
+    }
 
     void draw(Board& board) override {
         for (int i = -radius; i <= radius; ++i) {
@@ -160,6 +168,10 @@ class Rectangle : public Shape {
 public:
     Rectangle(int left, int top, int w, int h) : x(left), y(top), width(w), height(h) {}
 
+    double area() const override {
+        return width * height;
+    }
+
     void draw(Board& board) override {
         for (int i = 0; i < height; ++i) {
             for (int j = 0; j < width; ++j) {
@@ -227,6 +239,16 @@ class Triangle : public Shape {
 
 public:
     Triangle(int left, int top, int l, const string& triangleType) : x(left), y(top), length(l), type(triangleType) {}
+
+    double area() const override {
+        if (type == "right") {
+            return 0.5 * length * length; // Area of a right triangle
+        }
+        else if (type == "equal") {
+            return (sqrt(3) / 4) * length * length; // Area of an equilateral triangle
+        }
+        return 0;
+    }
 
     void draw(Board& board) override {
         if (type == "right") {
@@ -368,6 +390,11 @@ public:
                 Circle* circle = new Circle(x, y, radius);
                 circle->setColor(color);
                 circle->setFilled(isFill);
+                if (!circle->fitsOnBoard()) {
+                    cout << "Circle's area exceeds board size. Cannot draw.\n";
+                    delete circle;
+                    return;
+                }
                 if (circle->isInsideBoard() && !shapeExists(circle)) {
                     shapes[++currentId] = circle;
                     placedShapes.insert(circle->serialize());
@@ -387,6 +414,11 @@ public:
                 }
                 Rectangle* rectangle = new Rectangle(x, y, width, height);
                 rectangle->setColor(color);
+                if (!rectangle->fitsOnBoard()) {
+                    cout << "Rectangle's area exceeds board size. Cannot draw.\n";
+                    delete rectangle;
+                    return;
+                }
                 if (rectangle->isInsideBoard() && !shapeExists(rectangle)) {
                     shapes[++currentId] = rectangle;
                     placedShapes.insert(rectangle->serialize());
@@ -407,6 +439,11 @@ public:
                 }
                 Triangle* triangle = new Triangle(x, y, length, triangleType);
                 triangle->setColor(color);
+                if (!triangle->fitsOnBoard()) {
+                    cout << "Triangle's area exceeds board size. Cannot draw.\n";
+                    delete triangle;
+                    return;
+                }
                 if (triangle->isInsideBoard() && !shapeExists(triangle)) {
                     shapes[++currentId] = triangle;
                     placedShapes.insert(triangle->serialize());
@@ -427,6 +464,11 @@ public:
                     return;
                 }
                 Circle* circle = new Circle(x, y, radius);
+                if (!circle->fitsOnBoard()) {
+                    cout << "Circle's area exceeds board size. Cannot draw.\n";
+                    delete circle;
+                    return;
+                }
                 if (circle->isInsideBoard() && !shapeExists(circle)) {
                     shapes[++currentId] = circle;
                     placedShapes.insert(circle->serialize());
@@ -444,6 +486,11 @@ public:
                     return;
                 }
                 Rectangle* rectangle = new Rectangle(x, y, width, height);
+                if (!rectangle->fitsOnBoard()) {
+                    cout << "Rectangle's area exceeds board size. Cannot draw.\n";
+                    delete rectangle;
+                    return;
+                }
                 if (rectangle->isInsideBoard() && !shapeExists(rectangle)) {
                     shapes[++currentId] = rectangle;
                     placedShapes.insert(rectangle->serialize());
@@ -462,6 +509,11 @@ public:
                     return;
                 }
                 Triangle* triangle = new Triangle(x, y, length, triangleType);
+                if (!triangle->fitsOnBoard()) {
+                    cout << "Circle's area exceeds board size. Cannot draw.\n";
+                    delete triangle;
+                    return;
+                }
                 if (triangle->isInsideBoard() && !shapeExists(triangle)) {
                     shapes[++currentId] = triangle;
                     placedShapes.insert(triangle->serialize());
