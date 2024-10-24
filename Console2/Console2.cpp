@@ -830,12 +830,16 @@ public:
         }
 
         Shape* shape = it->second;
+        string originalColor = shape->getColor();
+        bool wasFilled = shape->getFilled();
 
         if (Circle* circle = dynamic_cast<Circle*>(shape)) {
             if (newParams.size() == 1) {
                 vector<int> newRadius = { newParams[0] };
                 Circle tempCircle = *circle;
                 tempCircle.applyEdit(newRadius);
+                string originalColor = shape->getColor();
+                bool wasFilled = shape->getFilled();
                 if (tempCircle.isInsideBoard()) {
                     circle->applyEdit(newRadius);
                     drawAllShapes(board);
@@ -854,6 +858,8 @@ public:
                 vector<int> newDimensions = { newParams[0], newParams[1] };
                 Rectangle tempRectangle = *rectangle;
                 tempRectangle.applyEdit(newDimensions);
+                string originalColor = shape->getColor();
+                bool wasFilled = shape->getFilled();
                 if (tempRectangle.isInsideBoard()) {
                     rectangle->applyEdit(newDimensions);
                     drawAllShapes(board);
@@ -872,6 +878,8 @@ public:
                 vector<int> newLength = { newParams[0] };
                 Triangle tempTriangle = *triangle;
                 tempTriangle.applyEdit(newLength);
+                string originalColor = shape->getColor();
+                bool wasFilled = shape->getFilled();
                 if (tempTriangle.isInsideBoard()) {
                     triangle->applyEdit(newLength);
                     drawAllShapes(board);

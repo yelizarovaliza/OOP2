@@ -1,1 +1,1 @@
-circle 15 25 10 red filled
+circle 15 15 15 red filled
